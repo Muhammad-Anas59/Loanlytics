@@ -1,54 +1,71 @@
-# Loanlytics
+# Loanlytics: Credit Default Prediction
 
-Loan approval prediction using Logistic Regression.
-
-Live app: https://loanlytics.streamlit.app
+Predicts whether a borrower will face serious delinquency (90+ days past due) within 2 years, with a risk probability for each customer.
 
 ## Problem
-Predict whether a loan application will be approved or rejected, and give the approval probability. This is a binary classification problem. Target: Loan_Status (1 = approved, 0 = rejected).
+Binary classification. Target: `SeriousDlqin2yrs` (1 = defaulted within 2 years, 0 = did not). Only 6.7% of customers default, so the data is heavily imbalanced.
 
 ## Dataset
-Kaggle "Loan Prediction Problem Dataset" (train_u6lujuX_CVtuZ9i.csv). 614 rows and 13 columns. About 68.7% of loans are approved and 31.3% are rejected.
+Kaggle "Give Me Some Credit" (`cs-training.csv`): 150,000 rows and 11 columns covering age, income, debt ratio, credit utilization, open credit lines and past-due history.
 
-## Preprocessing
-- Dropped Loan_ID
-- Replaced Dependents "3+" with 3
-- Filled missing values: mode for categorical columns, Loan_Amount_Term and Credit_History, median for LoanAmount
-- Encoded Gender, Married, Education, Self_Employed and Loan_Status as 0/1
-- One-hot encoded Property_Area
-- Split the data 80/20 with stratify
-- Scaled ApplicantIncome, CoapplicantIncome, LoanAmount and Loan_Amount_Term with StandardScaler (fitted on training data only)
+## Results (test set, 30,000 rows)
 
-## Model
-Logistic Regression (scikit-learn) with a decision threshold of 0.5.
-
-## Results (test set, 123 rows)
-| Metric | Score |
+| Metric | Value |
 |---|---|
-| Accuracy | 0.86 |
-| Precision (Approved) | 0.84 |
-| Recall (Approved) | 0.99 |
-| F1 (Approved) | 0.91 |
-| Precision (Rejected) | 0.96 |
-| Recall (Rejected) | 0.58 |
-| ROC-AUC | 0.848 |
+| ROC-AUC | 0.870 |
+| 5-fold CV ROC-AUC | 0.864 |
+| Recall (defaulters caught) | 50% |
+| Precision | 41% |
+| F1 (default class) | 0.45 |
 
-Confusion matrix: 22 true negatives, 16 false positives, 1 false negative, 84 true positives.
+Confusion matrix (threshold 0.79): 26,540 true negatives, 1,455 false positives, 1,009 false negatives, 996 true positives.
 
-## Screenshots
-![Confusion matrix](screenshots/confusion_matrix.png)
-![ROC curve](screenshots/roc_curve.png)
-![App](screenshots/app.png)
+The threshold was chosen on out-of-fold training predictions, not the test set, to avoid leakage.
 
-## Limitations
-- Small dataset (614 rows), so results can change with a different split.
-- The model leans towards approving. It approved 16 of 38 applicants who should have been rejected.
-- Credit_History is the main signal, so the model depends heavily on one feature.
-- The data includes gender and marital status, which can cause unfair decisions in real use.
-- Trained on one dataset only. This is a learning project and not for real lending decisions.
+## Model comparison (5-fold CV)
+
+| Model | ROC-AUC | PR-AUC |
+|---|---|---|
+| Logistic Regression | 0.819 | 0.341 |
+| Random Forest | 0.853 | 0.383 |
+| **XGBoost** | **0.864** | **0.400** |
+
+## Approach
+1. **Cleaning:** median imputation for income (plus a missing flag), dependents filled with 0, removed ages 18 and under, capped extreme outliers, treated the 96/98 codes in the late-payment columns as special values.
+2. **Split:** 80/20, stratified.
+3. **Imbalance:** handled with `scale_pos_weight` and stratified folds.
+4. **Features:** total late payments, late-payment-by-utilization interaction, income per person, debt amount.
+5. **Tuning:** Optuna (20 trials) on XGBoost. Gains were marginal, so the model is near this dataset's ceiling.
+6. **Explainability:** SHAP shows credit utilization, late payments and younger age as the main risk drivers.
+
+![SHAP summary](shap_summary.png)
+
+## Files
+- `loanlytics.ipynb`: full notebook
+- `loanlytics_xgb.joblib`: trained model
+- `config.json`: decision threshold and feature list
+- `shap_summary.png`: SHAP plot
 
 ## Run locally
 ```
-pip install -r requirements.txt
-streamlit run app.py
+pip install pandas scikit-learn xgboost joblib
 ```
+
+```python
+import joblib, json
+
+model = joblib.load('loanlytics_xgb.joblib')
+cfg = json.load(open('config.json'))
+
+# df must contain the columns in cfg['features']
+proba = model.predict_proba(df[cfg['features']])[:, 1]
+flagged = proba >= cfg['threshold']
+```
+
+## Limitations
+- Precision is modest (41%), so this is a screening tool, not an automated decision-maker.
+- Trained on one historical dataset; it needs validation before real-world use.
+- Age is used as a feature, which may raise fairness concerns in real lending.
+
+## Tech
+Python, pandas, scikit-learn, XGBoost, Optuna, SHAP
