@@ -82,7 +82,7 @@ NICE = {
 }
 
 st.markdown(
-    '<div class="hero"><h1>💳 Loanlytics</h1>'
+    '<div class="hero"><h1>Loanlytics</h1>'
     "<p>Credit default risk prediction with XGBoost and explainable factors. "
     "Trained on 150,000 borrowers.</p></div>",
     unsafe_allow_html=True,

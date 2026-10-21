@@ -1,5 +1,7 @@
 # Loanlytics: Credit Default Prediction
 
+**Live app:** https://loanlytics.streamlit.app
+
 Predicts whether a borrower will face serious delinquency (90+ days past due) within 2 years, with a risk probability for each customer.
 
 ## Problem
