@@ -40,13 +40,20 @@ The threshold was chosen on out-of-fold training predictions, not the test set, 
 5. **Tuning:** Optuna (20 trials) on XGBoost. Gains were marginal, so the model is near this dataset's ceiling.
 6. **Explainability:** SHAP shows credit utilization, late payments and younger age as the main risk drivers.
 
-![SHAP summary](shap_summary.png)
+## App preview
+<p align="center">
+<img src="Images/high_risk_view.png" width="48%">
+<img src="Images/low_risk.png" width="48%">
+</p>
+
+## Explainability (SHAP)
+![SHAP summary](Images/shap_summary.png)
 
 ## Files
 - `loanlytics.ipynb`: full notebook
 - `loanlytics_xgb.joblib`: trained model
 - `config.json`: decision threshold and feature list
-- `shap_summary.png`: SHAP plot
+- `Images/`: app screenshots and SHAP plot
 
 ## Run locally
 ```
